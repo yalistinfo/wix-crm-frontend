@@ -42,6 +42,14 @@ const DEAL_STATUS_COLOR = {
   "Dead": { color: "#FFFFFF", bg: "#2B2D2A" },
 };
 
+const INVOICED_STATUSES = ["Not Invoiced", "Invoiced", "Paid"];
+
+const INVOICED_STATUS_COLOR = {
+  "Not Invoiced": DEAL_STATUS_COLOR["Uncontacted"],
+  "Invoiced": DEAL_STATUS_COLOR["Lost to price"],
+  "Paid": DEAL_STATUS_COLOR["Complete"],
+};
+
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 const INVOICE_STATUSES = ["Draft", "Sent", "Partially Paid", "Paid", "Overdue", "Voided"];
@@ -221,8 +229,7 @@ export default function App() {
       style={{
         fontFamily: "'Inter', sans-serif",
         background: "#FAFAF8",
-        height: "100%",
-        minHeight: "100vh",
+        minHeight: "600px",
         display: "flex",
         color: "#1B1E1D",
         position: "relative",
@@ -699,6 +706,7 @@ function DealsView({ data, setData }) {
       status: "Uncontacted",
       lastContact: "",
       nextReminder: "",
+      invoiceStatus: "Not Invoiced",
       notes: "",
     };
     setData((prev) => ({ ...prev, deals: [...prev.deals, d] }));
@@ -761,6 +769,7 @@ function DealsView({ data, setData }) {
             status,
             lastContact,
             nextReminder: lastContact ? addDays(lastContact, 90) : "",
+            invoiceStatus: "Not Invoiced",
             notes: notes ? `Quote #${notes}` : "",
           });
           newRows++;
@@ -809,6 +818,7 @@ function DealsView({ data, setData }) {
             status: "Uncontacted",
             lastContact: "",
             nextReminder: "",
+            invoiceStatus: "Not Invoiced",
           },
         ];
       }
@@ -836,6 +846,7 @@ function DealsView({ data, setData }) {
       status: "Uncontacted",
       lastContact: "",
       nextReminder: "",
+      invoiceStatus: "Not Invoiced",
     };
     setData((prev) => ({ ...prev, deals: [...prev.deals, copy] }));
   }
@@ -889,7 +900,7 @@ function DealsView({ data, setData }) {
             Unscheduled <span style={{ color: "#8A8A80", fontWeight: 400 }}>(no due date set — set one to move it into a month)</span>
           </div>
           <div style={{ border: "1px solid #EDEBE2", borderRadius: "8px", overflow: "hidden", background: "#FFFFFF" }}>
-            <div style={{ display: "grid", gridTemplateColumns: "0.9fr 1.2fr 1.6fr 1.4fr 1fr 1fr 1fr 1.6fr 0.6fr", background: "#F2F0E7", fontSize: "11px", color: "#7A7A70", padding: "6px 4px" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "0.9fr 1.2fr 1.6fr 1.4fr 1fr 1fr 1fr 1.1fr 1.6fr 0.6fr", background: "#F2F0E7", fontSize: "11px", color: "#7A7A70", padding: "6px 4px" }}>
               <div style={{ padding: "0 6px" }}>Price</div>
               <div style={{ padding: "0 6px" }}>Status</div>
               <div style={{ padding: "0 6px" }}>Title</div>
@@ -897,6 +908,7 @@ function DealsView({ data, setData }) {
               <div style={{ padding: "0 6px" }}>Due date</div>
               <div style={{ padding: "0 6px" }}>Last contact</div>
               <div style={{ padding: "0 6px" }}>Next reminder</div>
+                <div style={{ padding: "0 6px" }}>Invoiced</div>
               <div style={{ padding: "0 6px" }}>Notes</div>
               <div></div>
             </div>
@@ -904,7 +916,7 @@ function DealsView({ data, setData }) {
               const sc = DEAL_STATUS_COLOR[d.status];
               const overdue = !CLOSED_STATUSES.includes(d.status) && d.nextReminder && d.nextReminder <= todayStr();
               return (
-                <div key={d.id} className="deal-row" style={{ display: "grid", gridTemplateColumns: "0.9fr 1.2fr 1.6fr 1.4fr 1fr 1fr 1fr 1.6fr 0.6fr", alignItems: "center", background: sc.bg + "22" }}>
+                <div key={d.id} className="deal-row" style={{ display: "grid", gridTemplateColumns: "0.9fr 1.2fr 1.6fr 1.4fr 1fr 1fr 1fr 1.1fr 1.6fr 0.6fr", alignItems: "center", background: sc.bg + "22" }}>
                   <input className="deal-cell" type="number" value={d.price} onChange={(e) => updateDeal(d.id, { price: Number(e.target.value) })} style={{ fontWeight: 600 }} />
                   <select
                     className="deal-cell"
@@ -921,6 +933,14 @@ function DealsView({ data, setData }) {
                   <div className="deal-cell" style={{ color: overdue ? "#E14B3E" : "#8A8A80", fontWeight: overdue ? 600 : 400 }}>
                     {formatDate(d.nextReminder) || "—"}
                   </div>
+                  <select
+                    className="deal-cell"
+                    value={d.invoiceStatus || "Not Invoiced"}
+                    onChange={(e) => updateDeal(d.id, { invoiceStatus: e.target.value })}
+                    style={{ color: INVOICED_STATUS_COLOR[d.invoiceStatus || "Not Invoiced"].color, background: INVOICED_STATUS_COLOR[d.invoiceStatus || "Not Invoiced"].bg, fontWeight: 600, borderRadius: "5px", border: "none" }}
+                  >
+                    {INVOICED_STATUSES.map((s) => (<option key={s} value={s}>{s}</option>))}
+                  </select>
                   <input className="deal-cell" placeholder="Notes" value={d.notes || ""} onChange={(e) => updateDeal(d.id, { notes: e.target.value })} />
                   <div style={{ display: "flex", gap: "4px", padding: "0 6px" }}>
                     <button className="ghost" title="Copy to next year" style={{ padding: "3px 6px", fontSize: "11px" }} onClick={() => addToNextYear(d)}>↻</button>
@@ -944,7 +964,7 @@ function DealsView({ data, setData }) {
           <div key={m} style={{ marginBottom: "1.5rem" }}>
             <div style={{ fontSize: "13px", fontWeight: 600, color: "#5C5F58", marginBottom: "6px" }}>{m} {year}</div>
             <div style={{ border: "1px solid #EDEBE2", borderRadius: "8px", overflow: "hidden", background: "#FFFFFF" }}>
-              <div style={{ display: "grid", gridTemplateColumns: "0.9fr 1.2fr 1.6fr 1.4fr 1fr 1fr 1fr 1.6fr 0.6fr", background: "#F2F0E7", fontSize: "11px", color: "#7A7A70", padding: "6px 4px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "0.9fr 1.2fr 1.6fr 1.4fr 1fr 1fr 1fr 1.1fr 1.6fr 0.6fr", background: "#F2F0E7", fontSize: "11px", color: "#7A7A70", padding: "6px 4px" }}>
                 <div style={{ padding: "0 6px" }}>Price</div>
                 <div style={{ padding: "0 6px" }}>Status</div>
                 <div style={{ padding: "0 6px" }}>Title</div>
@@ -952,6 +972,7 @@ function DealsView({ data, setData }) {
                 <div style={{ padding: "0 6px" }}>Due date</div>
                 <div style={{ padding: "0 6px" }}>Last contact</div>
                 <div style={{ padding: "0 6px" }}>Next reminder</div>
+                <div style={{ padding: "0 6px" }}>Invoiced</div>
                 <div style={{ padding: "0 6px" }}>Notes</div>
                 <div></div>
               </div>
@@ -961,7 +982,7 @@ function DealsView({ data, setData }) {
                   const sc = DEAL_STATUS_COLOR[d.status];
                   const overdue = !CLOSED_STATUSES.includes(d.status) && d.nextReminder && d.nextReminder <= todayStr();
                   return (
-                    <div key={d.id} className="deal-row" style={{ display: "grid", gridTemplateColumns: "0.9fr 1.2fr 1.6fr 1.4fr 1fr 1fr 1fr 1.6fr 0.6fr", alignItems: "center", background: sc.bg + "22" }}>
+                    <div key={d.id} className="deal-row" style={{ display: "grid", gridTemplateColumns: "0.9fr 1.2fr 1.6fr 1.4fr 1fr 1fr 1fr 1.1fr 1.6fr 0.6fr", alignItems: "center", background: sc.bg + "22" }}>
                       <input className="deal-cell" type="number" value={d.price} onChange={(e) => updateDeal(d.id, { price: Number(e.target.value) })} style={{ fontWeight: 600 }} />
                       <select
                         className="deal-cell"
@@ -978,6 +999,14 @@ function DealsView({ data, setData }) {
                       <div className="deal-cell" style={{ color: overdue ? "#E14B3E" : "#8A8A80", fontWeight: overdue ? 600 : 400 }}>
                         {formatDate(d.nextReminder) || "—"}
                       </div>
+                      <select
+                        className="deal-cell"
+                        value={d.invoiceStatus || "Not Invoiced"}
+                        onChange={(e) => updateDeal(d.id, { invoiceStatus: e.target.value })}
+                        style={{ color: INVOICED_STATUS_COLOR[d.invoiceStatus || "Not Invoiced"].color, background: INVOICED_STATUS_COLOR[d.invoiceStatus || "Not Invoiced"].bg, fontWeight: 600, borderRadius: "5px", border: "none" }}
+                      >
+                        {INVOICED_STATUSES.map((s) => (<option key={s} value={s}>{s}</option>))}
+                      </select>
                       <input className="deal-cell" placeholder="Notes" value={d.notes || ""} onChange={(e) => updateDeal(d.id, { notes: e.target.value })} />
                       <div style={{ display: "flex", gap: "4px", padding: "0 6px" }}>
                         <button className="ghost" title="Copy to next year" style={{ padding: "3px 6px", fontSize: "11px" }} onClick={() => addToNextYear(d)}>↻</button>
