@@ -221,7 +221,8 @@ export default function App() {
       style={{
         fontFamily: "'Inter', sans-serif",
         background: "#FAFAF8",
-        minHeight: "600px",
+        height: "100%",
+        minHeight: "100vh",
         display: "flex",
         color: "#1B1E1D",
         position: "relative",
