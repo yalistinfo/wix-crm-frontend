@@ -898,7 +898,7 @@ function DealsView({ data, setData }) {
       {unscheduled.length > 0 && (
         <div style={{ marginBottom: "1.5rem" }}>
           <div style={{ fontSize: "13px", fontWeight: 600, color: "#5C5F58", marginBottom: "6px" }}>
-            Unscheduled <span style={{ color: "#8A8A80", fontWeight: 400 }}>(no due date set — set one to move it into a month)</span>
+            Unscheduled <span style={{ color: "#8A8A80", fontWeight: 400 }}>(no completion date set — set one to move it into a month)</span>
           </div>
           <div style={{ border: "1px solid #EDEBE2", borderRadius: "8px", overflow: "hidden", background: "#FFFFFF" }}>
             <div style={{ display: "grid", gridTemplateColumns: "0.9fr 1.2fr 1.6fr 1.4fr 1fr 1fr 1fr 1.1fr 1.6fr 0.6fr", background: "#F2F0E7", fontSize: "11px", color: "#7A7A70", padding: "6px 4px" }}>
@@ -906,7 +906,7 @@ function DealsView({ data, setData }) {
               <div style={{ padding: "0 6px" }}>Status</div>
               <div style={{ padding: "0 6px" }}>Title</div>
               <div style={{ padding: "0 6px" }}>Customer email</div>
-              <div style={{ padding: "0 6px" }}>Due date</div>
+              <div style={{ padding: "0 6px" }}>Completion Date</div>
               <div style={{ padding: "0 6px" }}>Last contact</div>
               <div style={{ padding: "0 6px" }}>Next reminder</div>
                 <div style={{ padding: "0 6px" }}>Invoiced</div>
@@ -970,7 +970,7 @@ function DealsView({ data, setData }) {
                 <div style={{ padding: "0 6px" }}>Status</div>
                 <div style={{ padding: "0 6px" }}>Title</div>
                 <div style={{ padding: "0 6px" }}>Customer email</div>
-                <div style={{ padding: "0 6px" }}>Due date</div>
+                <div style={{ padding: "0 6px" }}>Completion Date</div>
                 <div style={{ padding: "0 6px" }}>Last contact</div>
                 <div style={{ padding: "0 6px" }}>Next reminder</div>
                 <div style={{ padding: "0 6px" }}>Invoiced</div>
