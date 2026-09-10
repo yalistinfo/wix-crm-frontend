@@ -31,6 +31,8 @@ const DEAL_STATUSES = [
 
 const CLOSED_STATUSES = ["Complete", "Lost", "Lost to price", "Dead"];
 
+const AUTO_CARRY_STATUSES = ["Complete", "Lost", "Lost to price"];
+
 const DEAL_STATUS_COLOR = {
   "Uncontacted": { color: "#FFFFFF", bg: "#E14B3E" },
   "Contacted": { color: "#FFFFFF", bg: "#3A5FE0" },
@@ -152,6 +154,17 @@ function findCsvCol(headers, keywords) {
     if (idx >= 0) return idx;
   }
   return -1;
+}
+
+function sortByDateField(rows, field) {
+  return [...rows].sort((a, b) => {
+    const av = a[field] || "";
+    const bv = b[field] || "";
+    if (!av && !bv) return 0;
+    if (!av) return 1;
+    if (!bv) return -1;
+    return new Date(av) - new Date(bv);
+  });
 }
 
 function normalizeCsvDate(str) {
@@ -637,6 +650,9 @@ function DealsView({ data, setData }) {
   const currentYear = new Date().getFullYear();
   const years = useMemo(() => {
     const set = new Set(deals.map((d) => new Date(d.dueDate).getFullYear()).filter((y) => !isNaN(y)));
+    deals.forEach((d) => {
+      if (!d.dueDate && d.year) set.add(d.year);
+    });
     set.add(currentYear);
     return Array.from(set).sort((a, b) => b - a);
   }, [deals, currentYear]);
@@ -648,10 +664,11 @@ function DealsView({ data, setData }) {
   const [showImportModal, setShowImportModal] = useState(false);
   const [importSummary, setImportSummary] = useState(null);
   const [confirmClearAll, setConfirmClearAll] = useState(false);
+  const [sortBy, setSortBy] = useState("dueDate");
 
   const filtered = useMemo(() => {
     return deals
-      .filter((d) => d.dueDate && new Date(d.dueDate).getFullYear() === year)
+      .filter((d) => d.dueDate && AUTO_CARRY_STATUSES.includes(d.status) && new Date(d.dueDate).getFullYear() === year)
       .filter((d) => statusFilter === "All" || d.status === statusFilter)
       .filter((d) => {
         const q = search.trim().toLowerCase();
@@ -662,14 +679,15 @@ function DealsView({ data, setData }) {
 
   const unscheduled = useMemo(() => {
     return deals
-      .filter((d) => !d.dueDate)
+      .filter((d) => !(d.dueDate && AUTO_CARRY_STATUSES.includes(d.status)))
+      .filter((d) => (d.year ?? currentYear) === year)
       .filter((d) => statusFilter === "All" || d.status === statusFilter)
       .filter((d) => {
         const q = search.trim().toLowerCase();
         if (!q) return true;
         return d.title.toLowerCase().includes(q) || (d.customerEmail || "").toLowerCase().includes(q);
       });
-  }, [deals, statusFilter, search]);
+  }, [deals, year, currentYear, statusFilter, search]);
 
   const grouped = useMemo(() => {
     const g = {};
@@ -703,11 +721,12 @@ function DealsView({ data, setData }) {
       title: "New deal",
       customerEmail: "",
       price: 0,
-      dueDate: todayStr(),
+      dueDate: "",
       status: "Uncontacted",
       lastContact: "",
       nextReminder: "",
       invoiceStatus: "Not Invoiced",
+      year,
       notes: "",
     };
     setData((prev) => ({ ...prev, deals: [...prev.deals, d] }));
@@ -771,6 +790,7 @@ function DealsView({ data, setData }) {
             lastContact,
             nextReminder: lastContact ? addDays(lastContact, 90) : "",
             invoiceStatus: "Not Invoiced",
+            year,
             notes: notes ? `Quote #${notes}` : "",
           });
           newRows++;
@@ -782,8 +802,6 @@ function DealsView({ data, setData }) {
     };
     reader.readAsText(file);
   }
-
-  const AUTO_CARRY_STATUSES = ["Complete", "Lost", "Lost to price"];
 
   function updateDeal(id, patch) {
     setData((prev) => {
@@ -804,22 +822,21 @@ function DealsView({ data, setData }) {
       const justClosed =
         patch.status && patch.status !== current.status && AUTO_CARRY_STATUSES.includes(patch.status);
       if (justClosed) {
-        let carriedDueDate = "";
-        if (next.dueDate) {
-          const nextDue = new Date(next.dueDate);
-          nextDue.setFullYear(nextDue.getFullYear() + 1);
-          carriedDueDate = nextDue.toISOString().slice(0, 10);
-        }
+        const carriedLastContact = next.dueDate || "";
+        const effectiveYear = next.dueDate ? new Date(next.dueDate).getFullYear() : (next.year ?? new Date().getFullYear());
+        const lostNote = ["Lost", "Lost to price"].includes(next.status) ? `${next.status} last year` : "";
         deals = [
           ...deals,
           {
             ...next,
             id: uid(),
-            dueDate: carriedDueDate,
+            dueDate: "",
             status: "Uncontacted",
-            lastContact: "",
-            nextReminder: "",
+            lastContact: carriedLastContact,
+            nextReminder: carriedLastContact ? addDays(carriedLastContact, 90) : "",
             invoiceStatus: "Not Invoiced",
+            year: effectiveYear + 1,
+            notes: [next.notes, lostNote].filter(Boolean).join(" · "),
           },
         ];
       }
@@ -834,20 +851,19 @@ function DealsView({ data, setData }) {
   }
 
   function addToNextYear(deal) {
-    let carriedDueDate = "";
-    if (deal.dueDate) {
-      const nextDue = new Date(deal.dueDate);
-      nextDue.setFullYear(nextDue.getFullYear() + 1);
-      carriedDueDate = nextDue.toISOString().slice(0, 10);
-    }
+    const carriedLastContact = deal.dueDate || "";
+    const effectiveYear = deal.dueDate ? new Date(deal.dueDate).getFullYear() : (deal.year ?? new Date().getFullYear());
+    const lostNote = ["Lost", "Lost to price"].includes(deal.status) ? `${deal.status} last year` : "";
     const copy = {
       ...deal,
       id: uid(),
-      dueDate: carriedDueDate,
+      dueDate: "",
       status: "Uncontacted",
-      lastContact: "",
-      nextReminder: "",
+      lastContact: carriedLastContact,
+      nextReminder: carriedLastContact ? addDays(carriedLastContact, 90) : "",
       invoiceStatus: "Not Invoiced",
+      year: effectiveYear + 1,
+      notes: [deal.notes, lostNote].filter(Boolean).join(" · "),
     };
     setData((prev) => ({ ...prev, deals: [...prev.deals, copy] }));
   }
@@ -865,6 +881,10 @@ function DealsView({ data, setData }) {
           <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} style={{ width: "auto" }}>
             <option value="All">All statuses</option>
             {DEAL_STATUSES.map((s) => (<option key={s} value={s}>{s}</option>))}
+          </select>
+          <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} style={{ width: "auto" }}>
+            <option value="dueDate">Sort: Completion Date</option>
+            <option value="lastContact">Sort: Last Year's Completion Date</option>
           </select>
           <button className="primary" onClick={addDeal}>Add new deal</button>
           <button className="ghost" onClick={() => { setImportSummary(null); setShowImportModal(true); }}>Import CSV</button>
@@ -898,7 +918,7 @@ function DealsView({ data, setData }) {
       {unscheduled.length > 0 && (
         <div style={{ marginBottom: "1.5rem" }}>
           <div style={{ fontSize: "13px", fontWeight: 600, color: "#5C5F58", marginBottom: "6px" }}>
-            Unscheduled <span style={{ color: "#8A8A80", fontWeight: 400 }}>(no completion date set — set one to move it into a month)</span>
+            Unscheduled <span style={{ color: "#8A8A80", fontWeight: 400 }}>(mark Complete, Lost, or Lost to price to move it into its month)</span>
           </div>
           <div style={{ border: "1px solid #EDEBE2", borderRadius: "8px", overflow: "hidden", background: "#FFFFFF" }}>
             <div style={{ display: "grid", gridTemplateColumns: "0.9fr 1.2fr 1.6fr 1.4fr 1fr 1fr 1fr 1.1fr 1.6fr 0.6fr", background: "#F2F0E7", fontSize: "11px", color: "#7A7A70", padding: "6px 4px" }}>
@@ -907,13 +927,13 @@ function DealsView({ data, setData }) {
               <div style={{ padding: "0 6px" }}>Title</div>
               <div style={{ padding: "0 6px" }}>Customer email</div>
               <div style={{ padding: "0 6px" }}>Completion Date</div>
-              <div style={{ padding: "0 6px" }}>Last contact</div>
+              <div style={{ padding: "0 6px" }}>Last Year's Completion Date</div>
               <div style={{ padding: "0 6px" }}>Next reminder</div>
                 <div style={{ padding: "0 6px" }}>Invoiced</div>
               <div style={{ padding: "0 6px" }}>Notes</div>
               <div></div>
             </div>
-            {unscheduled.map((d) => {
+            {sortByDateField(unscheduled, sortBy).map((d) => {
               const sc = DEAL_STATUS_COLOR[d.status];
               const overdue = !CLOSED_STATUSES.includes(d.status) && d.nextReminder && d.nextReminder <= todayStr();
               return (
@@ -971,14 +991,13 @@ function DealsView({ data, setData }) {
                 <div style={{ padding: "0 6px" }}>Title</div>
                 <div style={{ padding: "0 6px" }}>Customer email</div>
                 <div style={{ padding: "0 6px" }}>Completion Date</div>
-                <div style={{ padding: "0 6px" }}>Last contact</div>
+                <div style={{ padding: "0 6px" }}>Last Year's Completion Date</div>
                 <div style={{ padding: "0 6px" }}>Next reminder</div>
                 <div style={{ padding: "0 6px" }}>Invoiced</div>
                 <div style={{ padding: "0 6px" }}>Notes</div>
                 <div></div>
               </div>
-              {rows
-                .sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate))
+              {sortByDateField(rows, sortBy)
                 .map((d) => {
                   const sc = DEAL_STATUS_COLOR[d.status];
                   const overdue = !CLOSED_STATUSES.includes(d.status) && d.nextReminder && d.nextReminder <= todayStr();
