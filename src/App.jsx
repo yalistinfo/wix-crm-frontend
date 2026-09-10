@@ -174,7 +174,7 @@ export default function App() {
   const [data, setData] = useState(emptyData);
   const [loaded, setLoaded] = useState(false);
   const [saveError, setSaveError] = useState(false);
-  const [tab, setTab] = useState("contacts");
+  const [tab, setTab] = useState("deals");
   const saveTimer = useRef(null);
 
   useEffect(() => {
@@ -229,7 +229,8 @@ export default function App() {
       style={{
         fontFamily: "'Inter', sans-serif",
         background: "#FAFAF8",
-        minHeight: "600px",
+        height: "100%",
+        minHeight: "100vh",
         display: "flex",
         color: "#1B1E1D",
         position: "relative",
