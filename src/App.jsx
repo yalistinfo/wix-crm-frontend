@@ -266,7 +266,7 @@ export default function App() {
         .navtab.active { background: #34372F; color: #FAFAF8; }
         .navtab:not(.active) { color: #B8B6AA; }
         .navtab:not(.active):hover { background: #262924; }
-        .deal-cell { font-size: 13px; padding: 8px 10px; border: none; background: transparent; }
+        .deal-cell { font-size: 13px; padding: 8px 10px; border: none; background: transparent; min-width: 0; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; }
         .deal-row { border-bottom: 1px solid #EDEBE2; }
         .deal-row:hover { background: #F7F6F0; }
       `}</style>
@@ -732,6 +732,54 @@ function DealsView({ data, setData }) {
     setData((prev) => ({ ...prev, deals: [...prev.deals, d] }));
   }
 
+  function csvEscape(val) {
+    const s = String(val ?? "");
+    if (s.includes(",") || s.includes('"') || s.includes("\n")) {
+      return `"${s.replace(/"/g, '""')}"`;
+    }
+    return s;
+  }
+
+  function exportDealsCsv() {
+    const rows = [...filtered, ...unscheduled];
+    const headers = [
+      "Price",
+      "Status",
+      "Title",
+      "Customer Email",
+      "Completion Date",
+      "Last Year's Completion Date",
+      "Invoiced",
+      "Notes",
+    ];
+    const lines = [headers.join(",")];
+    rows.forEach((d) => {
+      lines.push(
+        [
+          d.price,
+          d.status,
+          d.title,
+          d.customerEmail,
+          d.dueDate,
+          d.lastContact,
+          d.invoiceStatus || "Not Invoiced",
+          d.notes,
+        ]
+          .map(csvEscape)
+          .join(",")
+      );
+    });
+    const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `quotes-dashboard-${year}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
   function clearAllDeals() {
     setData((prev) => ({ ...prev, deals: [] }));
     setConfirmClearAll(false);
@@ -888,6 +936,7 @@ function DealsView({ data, setData }) {
           </select>
           <button className="primary" onClick={addDeal}>Add new deal</button>
           <button className="ghost" onClick={() => { setImportSummary(null); setShowImportModal(true); }}>Import CSV</button>
+          <button className="ghost" onClick={exportDealsCsv}>Download CSV</button>
           {confirmClearAll ? (
             <button className="danger" onClick={clearAllDeals}>Confirm clear all?</button>
           ) : (
@@ -947,8 +996,8 @@ function DealsView({ data, setData }) {
                   >
                     {DEAL_STATUSES.map((s) => (<option key={s} value={s}>{s}</option>))}
                   </select>
-                  <input className="deal-cell" value={d.title} onChange={(e) => updateDeal(d.id, { title: e.target.value })} />
-                  <input className="deal-cell" value={d.customerEmail} onChange={(e) => updateDeal(d.id, { customerEmail: e.target.value })} />
+                  <input className="deal-cell" value={d.title} title={d.title} onChange={(e) => updateDeal(d.id, { title: e.target.value })} />
+                  <input className="deal-cell" value={d.customerEmail} title={d.customerEmail} onChange={(e) => updateDeal(d.id, { customerEmail: e.target.value })} />
                   <DateCell value={d.dueDate} onCommit={(v) => updateDeal(d.id, { dueDate: v })} />
                   <input className="deal-cell" type="date" value={d.lastContact} onChange={(e) => updateDeal(d.id, { lastContact: e.target.value })} />
                   <div className="deal-cell" style={{ color: overdue ? "#E14B3E" : "#8A8A80", fontWeight: overdue ? 600 : 400 }}>
@@ -1012,8 +1061,8 @@ function DealsView({ data, setData }) {
                       >
                         {DEAL_STATUSES.map((s) => (<option key={s} value={s}>{s}</option>))}
                       </select>
-                      <input className="deal-cell" value={d.title} onChange={(e) => updateDeal(d.id, { title: e.target.value })} />
-                      <input className="deal-cell" value={d.customerEmail} onChange={(e) => updateDeal(d.id, { customerEmail: e.target.value })} />
+                      <input className="deal-cell" value={d.title} title={d.title} onChange={(e) => updateDeal(d.id, { title: e.target.value })} />
+                      <input className="deal-cell" value={d.customerEmail} title={d.customerEmail} onChange={(e) => updateDeal(d.id, { customerEmail: e.target.value })} />
                       <DateCell value={d.dueDate} onCommit={(v) => updateDeal(d.id, { dueDate: v })} />
                       <input className="deal-cell" type="date" value={d.lastContact} onChange={(e) => updateDeal(d.id, { lastContact: e.target.value })} />
                       <div className="deal-cell" style={{ color: overdue ? "#E14B3E" : "#8A8A80", fontWeight: overdue ? 600 : 400 }}>
@@ -1272,8 +1321,8 @@ function InvoicesView({ data, setData }) {
                       >
                         {INVOICE_STATUSES.map((s) => (<option key={s} value={s}>{s}</option>))}
                       </select>
-                      <input className="deal-cell" value={d.title} onChange={(e) => updateInvoice(d.id, { title: e.target.value })} />
-                      <input className="deal-cell" value={d.customerEmail} onChange={(e) => updateInvoice(d.id, { customerEmail: e.target.value })} />
+                      <input className="deal-cell" value={d.title} title={d.title} onChange={(e) => updateInvoice(d.id, { title: e.target.value })} />
+                      <input className="deal-cell" value={d.customerEmail} title={d.customerEmail} onChange={(e) => updateInvoice(d.id, { customerEmail: e.target.value })} />
                       <input
                         className="deal-cell"
                         type="date"
