@@ -181,7 +181,7 @@ function normalizeCsvDate(str) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-const emptyData = { contacts: [], records: [], deals: [], invoices: [] };
+const emptyData = { contacts: [], records: [], deals: [], invoices: [], sidebarCollapsed: true };
 
 export default function App() {
   const [data, setData] = useState(emptyData);
@@ -201,6 +201,7 @@ export default function App() {
             records: parsed.records || [],
             deals: parsed.deals || [],
             invoices: parsed.invoices || [],
+            sidebarCollapsed: parsed.sidebarCollapsed ?? true,
           });
         }
       } catch (e) {
@@ -271,37 +272,86 @@ export default function App() {
         .deal-row:hover { background: #F7F6F0; }
       `}</style>
 
-      <div style={{ width: "220px", background: "#1B1E1D", color: "#E7E5DA", padding: "1.5rem 1.25rem", flexShrink: 0 }}>
-        <div className="serif" style={{ fontSize: "19px", fontWeight: 600, marginBottom: "2px" }}>
-          Ledger
-        </div>
-        <div style={{ fontSize: "12px", color: "#9A9A90", marginBottom: "1.5rem" }}>Customer &amp; deal records</div>
+      <div
+        style={{
+          width: data.sidebarCollapsed ? "48px" : "220px",
+          background: "#1B1E1D",
+          color: "#E7E5DA",
+          padding: data.sidebarCollapsed ? "1.5rem 0.5rem" : "1.5rem 1.25rem",
+          flexShrink: 0,
+          transition: "width 0.15s ease, padding 0.15s ease",
+          overflow: "hidden",
+        }}
+      >
+        <button
+          onClick={() => setData((d) => ({ ...d, sidebarCollapsed: !d.sidebarCollapsed }))}
+          title={data.sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          style={{
+            background: "transparent",
+            border: "1px solid #34372F",
+            borderRadius: "6px",
+            color: "#B8B6AA",
+            cursor: "pointer",
+            fontSize: "13px",
+            padding: "4px 8px",
+            marginBottom: data.sidebarCollapsed ? "1.25rem" : "1rem",
+            width: data.sidebarCollapsed ? "auto" : "100%",
+          }}
+        >
+          {data.sidebarCollapsed ? "»" : "« Collapse"}
+        </button>
 
-        <div className={"navtab" + (tab === "contacts" ? " active" : "")} onClick={() => setTab("contacts")}>
-          Contacts
+        {!data.sidebarCollapsed && (
+          <>
+            <div className="serif" style={{ fontSize: "19px", fontWeight: 600, marginBottom: "2px" }}>
+              Ledger
+            </div>
+            <div style={{ fontSize: "12px", color: "#9A9A90", marginBottom: "1.5rem" }}>Customer &amp; deal records</div>
+          </>
+        )}
+
+        <div
+          className={"navtab" + (tab === "contacts" ? " active" : "")}
+          onClick={() => setTab("contacts")}
+          title="Contacts"
+          style={data.sidebarCollapsed ? { textAlign: "center", padding: "8px 0" } : undefined}
+        >
+          {data.sidebarCollapsed ? "C" : "Contacts"}
         </div>
-        <div className={"navtab" + (tab === "deals" ? " active" : "")} onClick={() => setTab("deals")}>
-          Quotes Dashboard
+        <div
+          className={"navtab" + (tab === "deals" ? " active" : "")}
+          onClick={() => setTab("deals")}
+          title="Quotes Dashboard"
+          style={data.sidebarCollapsed ? { textAlign: "center", padding: "8px 0" } : undefined}
+        >
+          {data.sidebarCollapsed ? "Q" : "Quotes Dashboard"}
         </div>
-        <div className={"navtab" + (tab === "invoices" ? " active" : "")} onClick={() => setTab("invoices")}>
-          Invoice Dashboard
+        <div
+          className={"navtab" + (tab === "invoices" ? " active" : "")}
+          onClick={() => setTab("invoices")}
+          title="Invoice Dashboard"
+          style={data.sidebarCollapsed ? { textAlign: "center", padding: "8px 0" } : undefined}
+        >
+          {data.sidebarCollapsed ? "I" : "Invoice Dashboard"}
         </div>
 
-        <div style={{ marginTop: "2rem", paddingTop: "1.25rem", borderTop: "1px solid #34372F" }}>
-          <div style={{ fontSize: "11px", color: "#7A7A70", marginBottom: "10px", letterSpacing: "0.02em" }}>
-            Synced from Wix
+        {!data.sidebarCollapsed && (
+          <div style={{ marginTop: "2rem", paddingTop: "1.25rem", borderTop: "1px solid #34372F" }}>
+            <div style={{ fontSize: "11px", color: "#7A7A70", marginBottom: "10px", letterSpacing: "0.02em" }}>
+              Synced from Wix
+            </div>
+            {["Contacts", "Orders", "Bookings", "Quotes", "Invoices"].map((s) => (
+              <div key={s} style={{ fontSize: "12px", color: "#B8B6AA", padding: "3px 0" }}>
+                {s}
+              </div>
+            ))}
+            {saveError && (
+              <div style={{ fontSize: "11px", color: "#E29B8F", marginTop: "10px" }}>
+                Couldn't save changes. Try again.
+              </div>
+            )}
           </div>
-          {["Contacts", "Orders", "Bookings", "Quotes", "Invoices"].map((s) => (
-            <div key={s} style={{ fontSize: "12px", color: "#B8B6AA", padding: "3px 0" }}>
-              {s}
-            </div>
-          ))}
-          {saveError && (
-            <div style={{ fontSize: "11px", color: "#E29B8F", marginTop: "10px" }}>
-              Couldn't save changes. Try again.
-            </div>
-          )}
-        </div>
+        )}
       </div>
 
       {tab === "contacts" ? (
