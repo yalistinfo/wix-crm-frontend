@@ -794,12 +794,25 @@ function DealsView({ data, setData }) {
         return;
       }
       const headers = rows[0].map((h) => h.trim());
-      const emailCol = findCsvCol(headers, ["customer", "contact", "email"]);
-      const amountCol = findCsvCol(headers, ["amount", "total", "price"]);
+      const emailCol = findCsvCol(headers, ["customer email", "customer", "contact", "email"]);
+      const priceCol = findCsvCol(headers, ["price", "amount", "total"]);
       const statusCol = findCsvCol(headers, ["status"]);
-      const dateCol = findCsvCol(headers, ["date"]);
-      const titleCol = findCsvCol(headers, ["description", "title"]);
-      const notesCol = findCsvCol(headers, ["quote number", "number", "note"]);
+      const titleCol = findCsvCol(headers, ["title", "description"]);
+      const invoicedCol = findCsvCol(headers, ["invoiced"]);
+
+      // Completion Date: prefer our own export's column name, fall back to
+      // Wix's generic "Date" column for a first-time import from Wix.
+      const completionDateCol = findCsvCol(headers, ["completion date"]);
+      const genericDateCol = findCsvCol(headers, ["date"]);
+
+      // Last Year's Completion Date: only present in our own export format —
+      // Wix's export has no equivalent, so no fallback here.
+      const lastYearCol = findCsvCol(headers, ["last year's completion date", "last years completion date"]);
+
+      // Notes: prefer our own export's "Notes" column as-is; fall back to
+      // Wix's "Quote Number" column, wrapped for context.
+      const notesExactCol = findCsvCol(headers, ["notes"]);
+      const quoteNumberCol = findCsvCol(headers, ["quote number", "number"]);
 
       let newRows = 0;
       let skippedDuplicates = 0;
@@ -809,11 +822,30 @@ function DealsView({ data, setData }) {
         for (let r = 1; r < rows.length; r++) {
           const cols = rows[r];
           const customerEmail = emailCol >= 0 ? (cols[emailCol] || "").trim() : "";
-          const price = amountCol >= 0 ? Number(String(cols[amountCol] || "0").replace(/[^0-9.-]/g, "")) : 0;
+          const price = priceCol >= 0 ? Number(String(cols[priceCol] || "0").replace(/[^0-9.-]/g, "")) : 0;
           const rawStatus = statusCol >= 0 ? (cols[statusCol] || "").trim() : "";
-          const lastContact = dateCol >= 0 ? normalizeCsvDate(cols[dateCol]) : "";
           const title = titleCol >= 0 ? (cols[titleCol] || "").trim() : `Quote ${r}`;
-          const notes = notesCol >= 0 ? (cols[notesCol] || "").trim() : "";
+
+          const dueDate =
+            completionDateCol >= 0
+              ? normalizeCsvDate(cols[completionDateCol])
+              : genericDateCol >= 0
+              ? normalizeCsvDate(cols[genericDateCol])
+              : "";
+          const lastContact = lastYearCol >= 0 ? normalizeCsvDate(cols[lastYearCol]) : "";
+
+          const rawInvoiced = invoicedCol >= 0 ? (cols[invoicedCol] || "").trim() : "";
+          const matchedInvoiced = INVOICED_STATUSES.find((s) => s.toLowerCase() === rawInvoiced.toLowerCase());
+          const invoiceStatus = matchedInvoiced || "Not Invoiced";
+
+          const notes =
+            notesExactCol >= 0
+              ? (cols[notesExactCol] || "").trim()
+              : quoteNumberCol >= 0
+              ? (cols[quoteNumberCol] || "").trim()
+                ? `Quote #${(cols[quoteNumberCol] || "").trim()}`
+                : ""
+              : "";
 
           if (!title && !customerEmail) continue;
 
@@ -821,7 +853,7 @@ function DealsView({ data, setData }) {
           const status = matchedStatus || "Uncontacted";
 
           const isDuplicate = deals.some(
-            (d) => d.title.trim().toLowerCase() === title.trim().toLowerCase() && d.lastContact === lastContact
+            (d) => d.title.trim().toLowerCase() === title.trim().toLowerCase() && d.dueDate === dueDate
           );
           if (isDuplicate) {
             skippedDuplicates++;
@@ -833,13 +865,13 @@ function DealsView({ data, setData }) {
             title,
             customerEmail,
             price,
-            dueDate: "",
+            dueDate,
             status,
             lastContact,
             nextReminder: lastContact ? addDays(lastContact, 90) : "",
-            invoiceStatus: "Not Invoiced",
+            invoiceStatus,
             year,
-            notes: notes ? `Quote #${notes}` : "",
+            notes,
           });
           newRows++;
         }
@@ -1099,7 +1131,7 @@ function DealsView({ data, setData }) {
         onImport={importQuotesCsv}
         summary={importSummary}
         title="Import quotes CSV"
-        helpText="Expects columns: Quote Number, Description, Customer / Contact, Date, Amount, Status. Description becomes the title, Amount the price, Quote Number goes into notes, and Customer/Contact into the customer email field. Status defaults to Uncontacted if it doesn't match one of the 8 pipeline stages."
+        helpText="Recognizes your own exported columns directly (Price, Status, Title, Customer Email, Completion Date, Last Year's Completion Date, Invoiced, Notes) for a clean round trip. First-time imports from Wix also work — it falls back to Quote Number, Description, Customer/Contact, Date, Amount, Status, mapping Date to Completion Date and Quote Number into Notes."
       />
     )}
     </>
